@@ -1,2 +1,2 @@
-# gas_samples
-GNU Assembler short samples.
+# gnu_samples
+GNU Assembler/C short samples.
