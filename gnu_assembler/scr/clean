@@ -4,7 +4,9 @@
 
 import os
 import sys
+from typing import Union
 from typing import List
+from typing import Tuple
 import logging
 import argparse
 import pathlib
@@ -13,12 +15,47 @@ import pathlib
 log = logging.getLogger()
 
 
-def check_dirs(dir_names: List[str]) -> None:
-    """Check if directories can be cleaned."""
+def check_dirs(dir_names: List[str]) -> Union[List[str], Tuple[str]]:
+    """Check if directories can be cleaned.
+
+    Return directory paths.
+    """
+
+    dirs_path = ".."
+
+    cleanable_dir_names = ("obj", "bin", "in", "out")
+
+    dir_name_index = 0
+    dir_name = ""
+    dir_names = cleanable_dir_names if len(dir_names) == 0 else dir_names
+
+    dir_paths = []
+
+    for dir_name_index, dir_name in enumerate(dir_names):
+        dir_name = pathlib.PurePosixPath(dir_name).stem
+        if dir_name not in dir_names:
+            raise ValueError(f"{dir_name} is not cleanable.")
+        dir_paths.append(f"{dirs_path}/{dir_name}")
+        if not os.path.isdir(dir_paths[dir_name_index]):
+            raise FileNotFoundError(f"{dir_path} not found.")
+
+    return dir_paths
 
 
-def clean(dir_names: List[str]) -> None:
+def clean(dir_paths: List[str]) -> None:
     """Clean."""
+
+    dir_path = ""
+
+    file_name = ""
+    file_path = ""
+
+    for dir_path in dir_paths:
+        for file_name in os.listdir(dir_path):
+            file_path = f"{dir_path}/{file_name}"
+            if not os.path.isfile(file_path):
+                continue
+            os.remove(file_path)
 
 
 def main() -> int:
@@ -27,6 +64,9 @@ def main() -> int:
     # Setup.
 
     log.setLevel(logging.DEBUG)
+    log_stdout_handler = logging.StreamHandler(sys.stdout)
+    log_stdout_handler.setLevel(logging.DEBUG)
+    log.addHandler(log_stdout_handler)
 
     arg_parser = argparse.ArgumentParser(prog=pathlib.PurePosixPath(__file__).stem,
                                          description=sys.modules[__name__].__doc__,
@@ -38,8 +78,7 @@ def main() -> int:
 
     # Program.
 
-    check_dirs(args.dir_names)
-    clean(args.dir_names)
+    clean(check_dirs(args.dir_names))
 
     # Teardown.
 
@@ -49,4 +88,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main)
+    sys.exit(main())
