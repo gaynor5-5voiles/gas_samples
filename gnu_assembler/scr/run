@@ -9,6 +9,7 @@ from typing import Tuple
 import logging
 import argparse
 import pathlib
+import subprocess
 
 
 log = logging.getLogger()
@@ -22,13 +23,68 @@ def compile(src_names: List[str]) -> Tuple[str, List[str], str]:
     entry point).
     """
 
+    s_src_path = "../src"
+    s_obj_path = "../obj"
+    s_bin_path = "../bin"
 
-def link(main_comp: str, obj_paths: List[str], exe_path: str) -> None:
+    c_src_path = "../../gnu_c/src"
+
+    s_main_comp = True
+
+    src_name_index = 0
+    src_name = ""
+    src_path_index = 0
+    src_path = ""
+    src_paths = []
+
+    obj_paths = []
+
+    exe_path = ""
+
+    for src_name_index, src_name in enumerate(src_names):
+        src_name = pathlib.PurePosixPath(src_name).stem
+        obj_paths.append(f"{s_obj_path}/{src_name}.o")
+        src_path = f"{s_src_path}/{src_name}.s"
+        if os.path.isfile(src_path):
+            src_paths.append(src_path)
+            continue
+        if src_name_index == 0:
+            s_main_comp = False
+        src_path = f"{c_src_path}/{src_name}.c"
+        if not os.path.isfile(src_path):
+            raise FileNotFoundError(f"{src_name} not found.")
+        src_paths.append(src_path)
+
+    with open(src_paths[0], "r") as sd:
+        if sd.read().find(".globl main") != -1:
+            s_main_comp = False
+
+    for src_path_index, src_path in enumerate(src_paths):
+        if s_main_comp is False:
+            subprocess.run(["gcc", "-c", src_path, "-o", obj_paths[src_path_index]])
+            continue
+        subprocess.run(["as", src_path, "-o", obj_paths[src_path_index]])
+
+    s_main_comp = "gcc" if s_main_comp is False else "as"
+
+    exe_path = f"{s_bin_path}/{pathlib.PurePosixPath(src_names[0]).stem}.bin"
+
+    return (s_main_comp, obj_paths, exe_path)
+
+
+
+def link(s_main_comp: str, link_flags: str, obj_paths: List[str], exe_path: str) -> None:
     """Link."""
+
+    linker = s_main_comp if s_main_comp == "gcc" else "ld"
+    link_flags = link_flags.split(" ") if link_flags is not None else ()
+    subprocess.run([linker, *link_flags, *obj_paths, "-o", exe_path])
 
 
 def run(exe_file_path: str) -> None:
     """Run."""
+
+    log.debug(f"Return code: {subprocess.run([exe_file_path]).returncode}.")
 
 
 def main() -> int:
@@ -37,6 +93,9 @@ def main() -> int:
     # Setup.
 
     log.setLevel(logging.DEBUG)
+    log_stdout_handler = logging.StreamHandler(sys.stdout)
+    log_stdout_handler.setLevel(logging.DEBUG)
+    log.addHandler(log_stdout_handler)
 
     arg_parser = argparse.ArgumentParser(prog=pathlib.PurePosixPath(__file__).stem,
                                          description=sys.modules[__name__].__doc__,
@@ -45,14 +104,14 @@ def main() -> int:
                                          formatter_class=argparse.MetavarTypeHelpFormatter)
     arg_parser.add_argument("src_names", type=str, nargs="+",
                             help="Source file names.")
-    arg_parser.add_argument("-l", "--link-flags", type="str",
+    arg_parser.add_argument("-l", "--link-flags", type=str,
                             help="Linker flags, values.")
     args = arg_parser.parse_args()
 
     # Program.
 
-    (main_comp, obj_paths, exe_path) = compile(args.src_names)
-    link(main_comp, obj_paths, exe_path)
+    (s_main_comp, obj_paths, exe_path) = compile(args.src_names)
+    link(s_main_comp, args.link_flags, obj_paths, exe_path)
     run(exe_path)
 
     # Teardown.
@@ -63,4 +122,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main)
+    sys.exit(main())
