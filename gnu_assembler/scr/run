@@ -9,6 +9,7 @@ from typing import Tuple
 import logging
 import argparse
 import pathlib
+import subprocess
 
 
 log = logging.getLogger()
@@ -22,13 +23,59 @@ def compile(src_names: List[str]) -> Tuple[str, List[str], str]:
     entry point).
     """
 
+    s_src_path = "../src"
+    s_obj_path = "../obj"
+    s_bin_path = "../bin"
 
-def link(main_comp: str, obj_paths: List[str], exe_path: str) -> None:
+    c_src_path = "../../gnu_c/src"
+
+    s_main_comp = True
+
+    src_name_index = 0
+    src_name = ""
+    src_path_index = 0
+    src_path = ""
+    src_paths = []
+
+    obj_paths = []
+
+    exe_path = ""
+
+    for src_name_index, src_name in enumerate(src_names):
+        src_name = pathlib.PurePosixPath(src_name).stem
+        src_path = f"{s_src_path}/{src_name}.s"
+        if os.path.isfile(src_path)
+            src_paths.append(src_path)
+            continue
+        if src_name_index == 0:
+            main_comp = "gcc"
+            exe_path = f"{s_bin_path}/{src_name}.bin"
+        src_path = f"{c_src_path}/{src_name}.c"
+        if not os.path.isfile(src_path)
+            raise FileNotFoundError(f"{src_name} not found.")
+        s_main_comp = False
+        src_paths.append(src_path)
+        obj_paths.append(f"{s_obj_path}/{src_name}.o")
+
+    s_main_comp = "as" if s_main_comp is True else "gcc"
+    for src_path_index, src_path in enumerate(src_paths):
+        subprocess.run([s_main_comp, src_path, "-o", obj_paths[src_path_index])
+
+    return (s_main_comp, obj_paths, exe_path)
+        
+
+
+    def link(s_main_comp: str, link_flags: str, obj_paths: List[str], exe_path: str) -> None:
     """Link."""
+
+    log.debug(link_flags)
+    subprocess.run([s_main_comp, *link_flags.split(" "), *obj_paths, "-o", exe_path])
 
 
 def run(exe_file_path: str) -> None:
     """Run."""
+
+    log.debug(f"Return code: {subprocess.run([exe_file_path]).returncode)}.")
 
 
 def main() -> int:
@@ -51,8 +98,8 @@ def main() -> int:
 
     # Program.
 
-    (main_comp, obj_paths, exe_path) = compile(args.src_names)
-    link(main_comp, obj_paths, exe_path)
+    (s_main_comp, obj_paths, exe_path) = compile(args.src_names)
+    link(s_main_comp, args.link_flags, obj_paths, exe_path)
     run(exe_path)
 
     # Teardown.
