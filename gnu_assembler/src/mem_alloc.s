@@ -1,4 +1,4 @@
-### Allocate memory. ###
+### Allocate, free memory. ###
 
 
 .section .bss
@@ -8,9 +8,6 @@
 .lcomm mem_alloc_mem_low_addr, 8
 # Allocated memory high address.
 .lcomm mem_alloc_mem_high_addr, 8
-
-
-.data
 
 
 .section .rodata
@@ -44,31 +41,12 @@
 .text
 
 
-.globl main
 .globl mem_alloc
+.globl mem_free
 
 
-.type main, @function
 .type mem_alloc, @function
-
-
-main:
-    ### Test memory allocation. ###
-
-    pushq %rbp
-    movq %rsp, %rbp
-
-    movq $0xb, %rdi
-    callq mem_alloc
-    movq $'a', (%rax)
-
-    movq $0, %rax
-
-main_ret:
-
-    movq %rbp, %rsp
-    popq %rbp
-    retq
+.type mem_free, @function
 
 
 mem_alloc:
@@ -235,6 +213,24 @@ mem_alloc_mem_align_ret:
     movq MEM_ALLOC_RBX_OFFS(%rbp), %rbx
     movq MEM_ALLOC_R12_OFFS(%rbp), %r12
     movq MEM_ALLOC_R13_OFFS(%rbp), %r13
+    movq %rbp, %rsp
+    popq %rbp
+    retq
+
+
+mem_free:
+    ### Free memory. ###
+
+    pushq %rbp
+    movq %rsp, %rbp
+
+    # Free memory.
+    movq $0, MEM_ALLOC_MEM_HD_MEM_OCC_OFFS - MEM_ALLOC_MEM_HD_SIZE(%rdi)
+
+    movq $0, %rax
+
+mem_free_ret:
+
     movq %rbp, %rsp
     popq %rbp
     retq
