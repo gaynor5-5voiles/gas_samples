@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Compile, link, run."""
+
+
+import os
+import sys
+from typing import List
+from typing import Tuple
+import logging
+import argparse
+import pathlib
+import subprocess
+
+
+log = logging.getLogger()
+
+
+def compile(src_names: List[str]) -> Tuple[str, List[str], str]:
+    """Compile.
+
+    Return tuple of object file paths, executable file path.
+    """
+
+    c_src_path = "../src"
+    c_hdr_path = "../hdr"
+    c_obj_path = "../obj"
+    c_bin_path = "../bin"
+
+    s_src_path = "../../gnu_assembler/src"
+
+    src_name_index = 0
+    src_name = ""
+    src_path_index = 0
+    src_path = ""
+    src_paths = []
+
+    obj_paths = []
+
+    exe_path = ""
+
+    for src_name_index, src_name in enumerate(src_names):
+        src_name = pathlib.PurePosixPath(src_name).stem
+        obj_paths.append(os.path.join(c_obj_path, f"{src_name}.o"))
+        src_path = os.path.join(c_src_path, f"{src_name}.c")
+        if os.path.isfile(src_path):
+            src_paths.append(src_path)
+            continue
+        src_path = os.path.join(s_src_path, f"{src_name}.s")
+        if not os.path.isfile(src_path):
+            raise FileNotFoundError(f"{src_name} not found.")
+        src_paths.append(src_path)
+
+    for src_path, obj_path in zip(src_paths, obj_paths):
+        subprocess.run(["gcc", "-I", c_hdr_path, "-c", src_path, "-o", obj_path])
+
+    exe_path = os.path.join(c_bin_path, f"{pathlib.PurePosixPath(src_names[0]).stem}.bin")
+
+    return (obj_paths, exe_path)
+
+
+def link(link_flags: str, obj_paths: List[str], exe_path: str) -> None:
+    """Link."""
+
+    link_flags = link_flags.split(" ") if link_flags is not None else ()
+    subprocess.run(["gcc", *link_flags, *obj_paths, "-o", exe_path])
+
+
+def run(exe_file_path: str) -> None:
+    """Run."""
+
+    log.debug(f"Return code: {subprocess.run([exe_file_path]).returncode}.")
+
+
+def main() -> int:
+    """Main."""
+
+    # Setup.
+
+    log.setLevel(logging.DEBUG)
+    log_stdout_handler = logging.StreamHandler(sys.stdout)
+    log_stdout_handler.setLevel(logging.DEBUG)
+    log.addHandler(log_stdout_handler)
+
+    arg_parser = argparse.ArgumentParser(prog=pathlib.PurePosixPath(__file__).stem,
+                                         description=sys.modules[__name__].__doc__,
+                                         epilog=("File paths are calculated relative to current "
+                                                 "working directory."),
+                                         formatter_class=argparse.MetavarTypeHelpFormatter)
+    arg_parser.add_argument("src_names", type=str, nargs="+",
+                            help="Source file names.")
+    arg_parser.add_argument("-l", "--link-flags", type=str,
+                            help="Linker flags, values.")
+    args = arg_parser.parse_args()
+
+    # Program.
+
+    (obj_paths, exe_path) = compile(args.src_names)
+    link(args.link_flags, obj_paths, exe_path)
+    run(exe_path)
+
+    # Teardown.
+
+    log.handlers.clear()
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
