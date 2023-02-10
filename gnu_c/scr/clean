@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Teardown."""
+
+
+import os
+import sys
+from typing import List
+import logging
+import argparse
+import pathlib
+
+
+log = logging.getLogger()
+
+
+def check_dirs(dir_names: List[str]) -> List[str]:
+    """Check if directories can be cleaned.
+
+    Return directory paths.
+    """
+
+    dirs_path = ".."
+
+    cleanable_dir_names = ("obj", "bin", "in", "out")
+
+    dir_name_index = 0
+    dir_name = ""
+    dir_names = cleanable_dir_names if len(dir_names) == 0 else dir_names
+
+    dir_path = ""
+    dir_paths = []
+
+    for dir_name in dir_names:
+        dir_name = pathlib.PurePosixPath(dir_name).stem
+        if dir_name not in dir_names:
+            raise ValueError(f"{dir_name} not cleanable.")
+        dir_path = os.path.join(dirs_path, dir_name)
+        dir_paths.append(dir_path)
+        if not os.path.isdir(dir_path):
+            raise FileNotFoundError(f"{dir_name} not found.")
+
+    return dir_paths
+
+
+def clean(dir_paths: List[str]) -> None:
+    """Teardown."""
+
+    for dir_path in dir_paths:
+        for file_name in os.listdir(dir_path):
+            file_path = os.path.join(dir_path, file_name)
+            if not os.path.isfile(file_path):
+                continue
+            os.remove(file_path)
+
+
+def main() -> int:
+    """Main."""
+
+    # Setup.
+
+    log.setLevel(logging.DEBUG)
+    log_stdout_handler = logging.StreamHandler(sys.stdout)
+    log_stdout_handler.setLevel(logging.DEBUG)
+    log.addHandler(log_stdout_handler)
+
+    arg_parser = argparse.ArgumentParser(prog=pathlib.PurePosixPath(__file__).stem,
+                                         description=sys.modules[__name__].__doc__,
+                                         epilog=("Source, header file directory can't be teared "
+                                                 "down."),
+                                         formatter_class=argparse.MetavarTypeHelpFormatter)
+    arg_parser.add_argument("dir_names", type=str, nargs="*",
+                           help="Directory names.")
+    args = arg_parser.parse_args()
+
+    # Program.
+
+    clean(check_dirs(args.dir_names))
+
+    # Teardown.
+
+    log.handlers.clear()
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
