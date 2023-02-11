@@ -62,6 +62,17 @@ mem_alloc:
     movq %r14, MEM_ALLOC_R14_OFFS(%rbp)
     movq %r15, MEM_ALLOC_R15_OFFS(%rbp)
 
+    # Set error return code.
+    movq $-1, %r15
+
+    movq %r15, %rax
+    # Validate requested size.
+    cmpq $0, %rdi
+    je mem_alloc_ret
+    movq %rdi, %rbx
+    shlq $1, %rbx
+    jc mem_alloc_ret
+
     mem_alloc_while_mem_alloc_setup:
 
         # Set allocated memory low address.
@@ -76,9 +87,6 @@ mem_alloc:
         callq mem_alloc_mem_align
         # Set requested memory amount.
         movq %rax, %r14
-
-        # Set error return code.
-        movq $-1, %r15
 
     mem_alloc_while_mem_alloc:
 
