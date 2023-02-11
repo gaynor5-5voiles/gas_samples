@@ -147,6 +147,14 @@ mem_alloc:
             movq $MEM_ALLOC_BRK_SYSC, %rax
             movq $0, %rdi
             syscall
+            # Align allocated memory break address.
+            movq %rax, %rdi
+            callq mem_alloc_mem_align
+            movq %rax, %rbx
+            movq $MEM_ALLOC_BRK_SYSC, %rax
+            movq %rbx, %rdi
+            syscall
+            movq %rbx, %rax
             # Set allocated memory low, high addresses.
             movq %rax, mem_alloc_mem_low_addr
             movq %rax, %r12
